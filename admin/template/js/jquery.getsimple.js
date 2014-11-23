@@ -879,7 +879,8 @@ jQuery(document).ready(function () {
 
     // prerform updating after ajax save
     function ajaxSaveUpdate(success,status){
-        notifySuccess(status).popit().removeit();
+		clearNotify('success');
+        notifySuccess(status).popit();    	
         $('#pagechangednotify').hide();
         if(success) {
             $('#cancel-updates').hide();
@@ -903,7 +904,7 @@ jQuery(document).ready(function () {
         ajaxError(response);
         if ($(response).find('div.updated')) {
         	$(response).find('div.updated').parseNotify();
-        } else notifyError(i18n('ERROR_OCCURED')).popit().removeit();
+        } else notifyError(i18n('ERROR_OCCURED')).popit();
         warnme = false;
         pageisdirty = true;
     }
