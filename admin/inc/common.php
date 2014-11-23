@@ -36,7 +36,8 @@ $GS_constants = array(
  	'GSBASE'                => false,                         // front end flag
 	'GSCONFIGFILE'          => 'gsconfig.php',                // config filename
 	'GSWEBSITEFILE'         => 'website.xml',                 // website data filename
-	'GSCOMPONENTSFILE'      => 'components.xml',              // website data filename
+	'GSCOMPONENTSFILE'      => 'components.xml',              // components data filename
+	'GSSNIPPETSFILE'        => 'snippets.xml',                // snippets data filename
 	'GSAUTHFILE'            => 'authorization.xml',           // authorizaton salt data filename
 	'GSCSSMAINFILE'         => 'css.php',                     // main css file name
 	'GSADMINTHEMEFILE'      => 'admin.xml',                   // (str) custom admin xml theme file name
@@ -60,6 +61,8 @@ $GS_constants = array(
 	'GSBAKFILEPREFIX'       => '.bak',                        // (str) backup file naming prefix before extension
 	'GSRESETFILESUFFIX'     => '.reset',                      // (str) password reset file naming suffix before extension
 	'GSRESETFILEPREFIX'     => '',                            // (str) password reset file naming prefix after extension
+	'GSSHOWCODEHINTS'       => true,                          // (bool) show code hints on components page and snippets etc.
+	'GSHTMLEDITINLINE'      => false,                         // (bool) show html cke editors inline
 	# -----------------------------------------------------------------------------------------------------------------------------------------------	
 	'GSCONSTANTSLOADED'     => true                           // $GS_constants IS LOADED FLAG
 );
@@ -77,7 +80,7 @@ $GS_definitions = array(
 	'GSSTYLE'              => 'wide,sbfixed',                 // (str-csv) default style modifiers
 	'GSWIDTH'              => '1024px',                       // (str) pagewidth on backend,(max-width), null,'none',''  for 100% width
 	'GSWIDTHWIDE'          => '1366px',                       // (str) page width on backend pages defined in GSWIDEPAGES, values as above
-	'GSWIDEPAGES'          => 'theme-edit,components',        // (str-csv) pages to apply GSWIDTHWIED on
+	'GSWIDEPAGES'          => 'theme-edit,components,snippets', // (str-csv) pages to apply GSWIDTHWIED on
 	'GSALLOWLOGIN'         => true,                           // (bool) allow front end login
 	'GSALLOWRESETPASS'     => true,                           // (bool) allow front end password resets
 	'GSTHEMEEDITEXTS'      => 'php,css,js,html,htm,txt,xml,', // (str-csv) file extensions to show and edit in theme editor
@@ -116,6 +119,7 @@ global
  $GSADMIN,        // (str) admin foldername
  $GS_debug,       // (array) global array for storing debug log entries
  $components,     // (array) global array for storing components, array of objs from components.xml
+ $snippets,       // (array) global array for storing snippets, array of objs from snippets.xml
  $nocache,        // (bool) disable site wide cache true, not fully implemented
  $microtime_start,// (microtime) used for benchmark timers
  $pagesArray,     // (array) global array for storing pages cache, used for all page fields aside from content

@@ -1,12 +1,12 @@
 <?php
 /**
- * Components
+ * Snippets
  *
- * Displays and creates static components 	
+ * Displays and creates static snippets 	
  *
  * @package GetSimple
- * @subpackage Components
- * @link http://get-simple.info/docs/what-are-components
+ * @subpackage Snippets
+ * @link http://get-simple.info/docs/what-are-snippets
  */
  
 # setup inclusions
@@ -14,7 +14,7 @@ $load['plugin'] = true;
 include('inc/common.php');
 login_cookie_check();
 
-exec_action('load-components');
+exec_action('load-snippets');
 
 # variable settings
 $update = $table = $list = '';
@@ -27,10 +27,10 @@ if (isset($_POST['submitted'])){
 	$ids    = $_POST['id'];
 	$active = $_POST['active'];
 
-	check_for_csrf("modify_components");
+	check_for_csrf("modify_snippets");
 
 	# create backup file for undo
-	backup_datafile(GSDATAOTHERPATH.GSCOMPONENTSFILE);
+	backup_datafile(GSDATAOTHERPATH.GSSNIPPETSFILE);
 	
 	# start creation of top of components.xml file
 	$xml = new SimpleXMLExtended('<?xml version="1.0" encoding="UTF-8"?><channel></channel>');
@@ -70,25 +70,26 @@ if (isset($_POST['submitted'])){
 			$count++;
 		}
 	}
-	exec_action('component-save'); // @hook component-save before saving components data file
-	XMLsave($xml, GSDATAOTHERPATH.GSCOMPONENTSFILE);
-	$update = 'comp-success';
-	get_components_xml(true);
+	exec_action('snippet-save'); // @hook component-save before saving components data file
+	XMLsave($xml, GSDATAOTHERPATH.GSSNIPPETSFILE);
+
+	$update = 'snippet-success';
+	get_snippets_xml(true);
 }
 
 # if undo was invoked
-if (isset($_GET['undo'])) { 
+if (isset($_GET['undo'])) {
 	
 	# perform the undo
-	restore_datafile(GSDATAOTHERPATH.GSCOMPONENTSFILE);
-	check_for_csrf("undo");
-	if(!requestIsAjax()) redirect('components.php?upd=comp-restored'); // redirect to prevent refresh undos
-	$update = 'comp-restored';
-	get_components_xml(true);
+	restore_datafile(GSDATAOTHERPATH.GSSNIPPETSFILE);
+	check_for_csrf("undo");		
+	if(!requestIsAjax()) redirect('snippets.php?upd=comp-restored'); // redirect to prevent refresh undos
+	$update = 'snippet-restored';
+	get_snippets_xml(true);
 }
 
 # create components form html
-$collectionData = get_components_xml();
+$collectionData = get_snippets_xml();
 $numitems       = $collectionData ? count($collectionData) : 0;
 
 function getItemOutput($id,$item,$class = 'item_edit'){
@@ -102,13 +103,15 @@ function getItemOutput($id,$item,$class = 'item_edit'){
 	$str .= '<td><b title="'.i18n_r('DOUBLE_CLICK_EDIT').'" class="comptitle editable">'. stripslashes($item->title) .'</b></td>';
 	
 	if(getDef('GSSHOWCODEHINTS',true))
-	$str .= '<td style="text-align:right;" ><code>&lt;?php get_component(<span class="compslugcode">\''.$item->slug.'\'</span>); ?&gt;</code></td>';
+		$str .= '<td style="text-align:right;" ><code>&lt;?php get_snippet(<span class="compslugcode">\''.$item->slug.'\'</span>); ?&gt;</code></td>';
 	
 	$str .= '<td class="compactive"><label class="" for="active[]" >'.i18n_r('ACTIVE').'</label>';
 	$str .= '<input type="checkbox" name="active[]" '. (!$disabled ? 'checked="checked"' : '') .' value="'.$id.'" /></td>';
-	$str .= '<td class="delete" ><a href="javascript:void(0)" title="'.i18n_r('DELETE_COMPONENT').': '. cl($item->title).'?" class="delcomponent" rel="'.$id.'" >&times;</a></td>';
+	$str .= '<td class="delete" ><a href="javascript:void(0)" title="'.i18n_r('DELETE_SNIPPET').': '. cl($item->title).'?" class="delcomponent" rel="'.$id.'" >&times;</a></td>';
 	$str .= '</tr></table>';
-	$str .= '<textarea name="val[]" class="'.$class.'" data-mode="php" '.$readonly.'>'. stripslashes($item->value) .'</textarea>';
+	
+	$str .= '<textarea name="val[]" class="'. (getDef('GSHTMLEDITINLINE',true) ? 'inline ' : '') .$class.'" data-mode="html" '.$readonly.'>'. stripslashes($item->value) .'</textarea>';
+	// $str .= '<div id="htmleditor'.$id.'" style="margin:5px -1px;padding:18px;border: 1px solid #E5E5E5;box-shadow: 0 0 3px rgba(0, 0, 0, 0.15);" contentEditable="true">'.strip_decode($item->value).'</div>';
 	$str .= '<input type="hidden" class="compslug" name="slug[]" value="'. $item->slug .'" />';
 	$str .= '<input type="hidden" class="comptitle" name="title[]" value="'. stripslashes($item->title) .'" />';
 	$str .= '<input type="hidden" name="id[]" value="'. $id .'" />';
@@ -161,7 +164,7 @@ function outputCollectionTags($data,$id){
 	echo '</div>';
 }
 
-$pagetitle = i18n_r('COMPONENTS');
+$pagetitle = i18n_r('SNIPPETS');
 get_template('header');
 	
 include('template/include-nav.php'); ?>
@@ -170,33 +173,33 @@ include('template/include-nav.php'); ?>
 	
 	<div id="maincontent">
 		<div class="main">
-			<h3 class="floated"><?php echo i18n_r('EDIT_COMPONENTS');?></h3>
+			<h3 class="floated"><?php echo i18n_r('EDIT_SNIPPETS');?></h3>
 			<div class="edit-nav clearfix" >
-				<a href="javascript:void(0)" id="addcomponent" accesskey="<?php echo find_accesskey(i18n_r('ADD_COMPONENT'));?>" ><?php i18n('ADD_COMPONENT');?></a>
-				<?php if(!getDef('GSNOHIGHLIGHT',true)){
+				<a href="javascript:void(0)" id="addcomponent" accesskey="<?php echo find_accesskey(i18n_r('ADD_SNIPPET'));?>" ><?php i18n('ADD_SNIPPET');?></a>
+				<!--<?php if(!getDef('GSNOHIGHLIGHT',true)){
 				echo $themeselector; ?>	
-				<label id="cm_themeselect_label"><?php i18n('THEME'); ?></label>
-			<?php } ?>
+				<label>Theme</label>
+			<?php } ?>	-->
 				<?php exec_action(get_filename_id().'-edit-nav'); ?>
 			</div>		
 			<?php exec_action(get_filename_id().'-body'); ?>
 			<form id="compEditForm" class="manyinputs" action="<?php myself(); ?>" method="post" accept-charset="utf-8" >
 				<input type="hidden" id="id" value="<?php echo $numitems; ?>" />
-				<input type="hidden" id="nonce" name="nonce" value="<?php echo get_nonce("modify_components"); ?>" />
+				<input type="hidden" id="nonce" name="nonce" value="<?php echo get_nonce("modify_snippets"); ?>" />
 
 				<div id="divTxt"></div>
-				<?php outputCollection($collectionData,'components','code_edit'); ?>
+				<?php outputCollection($collectionData,'snippets','html_edit'); ?>
 				<p id="submit_line" class="<?php echo $numitems > 0 ? '' : ' hidden'; ?>" >
-					<span><input type="submit" class="submit" name="submitted" id="button" value="<?php i18n('SAVE_COMPONENTS');?>" /></span> &nbsp;&nbsp;<?php i18n('OR'); ?>&nbsp;&nbsp; <a class="cancel" href="components.php?cancel"><?php i18n('CANCEL'); ?></a>
+					<span><input type="submit" class="submit" name="submitted" id="button" value="<?php i18n('SAVE_SNIPPETS');?>" /></span> &nbsp;&nbsp;<?php i18n('OR'); ?>&nbsp;&nbsp; <a class="cancel" href="snippets.php?cancel"><?php i18n('CANCEL'); ?></a>
 				</p>
 			</form>
-			<div id="comptemplate" class="hidden"><?php echo getItemTemplate('code_edit noeditor'); ?></div>			
+			<div id="comptemplate" class="hidden"><?php echo getItemTemplate('html_edit noeditor'); ?></div>			
 		</div>
 	</div>
 	
 	<div id="sidebar">
 		<?php include('template/sidebar-theme.php'); ?>
-		<?php outputCollectionTags($collectionData,'components'); ?>
+		<?php outputCollectionTags($collectionData,'snippets'); ?>
 	</div>
 
 </div>

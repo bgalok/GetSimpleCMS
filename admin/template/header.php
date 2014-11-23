@@ -102,7 +102,7 @@ $title = $pagetitle.' &middot; '.cl($SITENAME);
 		queue_script('gscodeeditor', GSBACK);
 	}
 
-	if( ((get_filename_id()=='edit') || (get_filename_id()=='backup-edit')) && getGlobal('HTMLEDITOR') ){
+	if( ((get_filename_id()=='snippets') || (get_filename_id()=='edit') || (get_filename_id()=='backup-edit')) && getGlobal('HTMLEDITOR') ){
 		queue_script('gshtmleditor',GSBACK);
 	}
 
@@ -159,6 +159,8 @@ $title = $pagetitle.' &middot; '.cl($SITENAME);
             <?php if(getGlobal('EDTOOL')) echo ",toolbar: " . returnJsArray(getGlobal('EDTOOL')); ?>
 <?php       if(getGlobal('EDOPTIONS')) echo ','.trim(getGlobal('EDOPTIONS')); ?>
         };
+
+       <?php if(get_filename_id() == 'snippets') echo "htmlEditorConfig.height = '100px';"; ?>
 
     </script>
 

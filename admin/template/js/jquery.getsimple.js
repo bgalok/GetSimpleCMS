@@ -200,7 +200,7 @@ function notifySuccess($msg) {
 function notifyOk($msg) {
 	return notify($msg, 'ok');
 }
-
+ 
 function notifyWarn($msg) {
 	return notify($msg, 'warning');
 }
@@ -212,7 +212,7 @@ function notifyInfo($msg) {
 function notifyError($msg) {
 	return notify($msg, 'error');
 }
-
+ 
 function notify($msg, $type) {
 	if ($type == 'ok' || $type== 'success' || $type == 'warning' || $type == 'info' || $type == 'error') {
 		var $notify = $('<div style="display:none;" class="notify notify_' + $type + '"><p>' + $msg + '</p></div>').clone();
@@ -221,7 +221,7 @@ function notify($msg, $type) {
 		$notify.addCloseButton();
 		$notify.notifyExpire();
 		return $notify;
-	} 
+	}
 	// @todo else plain
 }
 
@@ -239,7 +239,7 @@ $.fn.notifyExpire = function($delay){
 
 	return $(this);
 }
-
+ 
 $.fn.parseNotify = function(){
 	Debugger.log($(this));
 	
@@ -301,23 +301,24 @@ function getTagName(elem){
 jQuery(document).ready(function () {
 
 	// init jq tabs custom handlers
-	$("#tabs").tabs({
-		activate: function(event, ui) {
-			// set bookmarkable urls
-			var hash = ui.newTab.context.hash;
-			hash = "tab_"+hash.replace('#','');
-			window.location.replace(('' + window.location).split('#')[0] + '#' + hash);	// should not affect history
-		},
-		create: function (event,ui) {
-			// set active tab from hash
-			if(window.location.hash){
-				var selectedTabHash = window.location.hash.replace(/tab_/,"");
-				var tabIndex = $( "#tabs li a" ).index($("#tabs li a[href='"+selectedTabHash+"']"));
-				if(tabIndex > 0) $( "#tabs" ).tabs("option", "active", tabIndex );
-			}	
-		}
-	});
-
+	if(window.tabs){
+		$("#tabs").tabs({
+			activate: function(event, ui) {
+				// set bookmarkable urls
+				var hash = ui.newTab.context.hash;
+				hash = "tab_"+hash.replace('#','');
+				window.location.replace(('' + window.location).split('#')[0] + '#' + hash);	// should not affect history
+			},
+			create: function (event,ui) {
+				// set active tab from hash
+				if(window.location.hash){
+					var selectedTabHash = window.location.hash.replace(/tab_/,"");
+					var tabIndex = $( "#tabs li a" ).index($("#tabs li a[href='"+selectedTabHash+"']"));
+					if(tabIndex > 0) $( "#tabs" ).tabs("option", "active", tabIndex );
+				}	
+			}
+		});
+	}
 	// init aja xindicator
 	var loadingAjaxIndicator;
 	if($('#loader')[0]) initLoaderIndicator();
@@ -409,48 +410,60 @@ jQuery(document).ready(function () {
 	// bind component new button
 	$("#addcomponent").on("click", function ($e) {
 		$e.preventDefault();
-		loadingAjaxIndicator.show();
+		ajaxStatusWait();
+
+		// get current highest id
 		var id = $("#id").val();
 
 		// copy template and add ids to fields
 		var comptemplate = $('#comptemplate').clone();
-		$(comptemplate).find('.compdiv').prop('id','section-'+id);
-		$(comptemplate).find('.compdiv').css('display','none');
-		
-		$(comptemplate).find('.delcomponent').prop('rel',id);
-		$(comptemplate).find("[name='id[]']").prop('value',id);
-		$(comptemplate).find("[name='active[]']").prop('value',id);
-		$(comptemplate).find("[name='val[]']").addClass('code_edit');
-		// console.log($(comptemplate).children().first().get(0));
+		var newcomponent = comptemplate.children(':first');
+
+		newcomponent.prop('id','section-'+id);
+		newcomponent.css('display','none');
+		newcomponent.find('.delcomponent').prop('rel',id);
+		newcomponent.find("[name='id[]']").prop('value',id);
+		newcomponent.find("[name='active[]']").prop('value',id);
 
 		// insert new component
-		var newcomponent = comptemplate.children(':first');
 		$("#divTxt").prepend(newcomponent);
 		
+		// remove template noeditor class
+		var input = newcomponent.find("[name='val[]']");
+		input.addClass('oneline');
+		input.removeClass('noeditor');
+		
 		// fade in
-		$("#section-" + id).slideToggle('fast');
+		newcomponent.slideToggle(500);
 
 		// trigger title change
-		$("#section-" + id).find($("b.editable")).comptitleinput();
+		newcomponent.find($("b.editable")).comptitleinput();
 
-		id = (id - 1) + 2;
-		$("#id").val(id); // bump count
-		loadingAjaxIndicator.fadeOut(500);
+ 		// bump id
+		nextid = (id - 1) + 2;
+		$("#id").val(nextid);
+
 		$('#submit_line').fadeIn(); // fadein in case no components exist
+		ajaxStatusComplete();
 		
-		// add codeditor to new textarea
-		var textarea = $("#divTxt").find('textarea').first();
-		// Debugger.log($.isFunction($.fn.editorFromTextarea));
-		if($.isFunction($.fn.editorFromTextarea)) textarea.editorFromTextarea();
+		// add code ditor
+		var codeedit = input.hasClass('code_edit');
+		if( codeedit && $.isFunction($.fn.editorFromTextarea)) input.editorFromTextarea();
 
-		var editor = textarea.data('editor');
-		// retain autosizing but make sure the editor start larger than 1 line high
-		if(editor){
-			$(editor.getWrapperElement()).find('.CodeMirror-scroll').css('min-height',100);
-			editor.refresh();
-		}	
+		// add html editor
+		var htmledit = input.hasClass('html_edit');
+		if( htmledit && $.isFunction($.fn.htmlEditorFromTextarea)) input.htmlEditorFromTextarea();
 
-		$("#divTxt").find('input').get(0).focus();
+		// set custom code editor height
+		// var editor = input.data('editor');
+		// if(editor){
+		// 	// retain autosizing but make sure the editor start larger than 1 line high
+		// 	$(editor.getWrapperElement()).find('.CodeMirror-scroll').css('min-height',100);
+		// 	editor.refresh();
+		// }
+
+		$("#divTxt").find('input').get(0).focus(); // focus input so editor gets focused ( if it listens of course )
+		// @todo make better focus events
 	});
 
 	// bind delete component button
@@ -483,7 +496,7 @@ jQuery(document).ready(function () {
 	$.fn.comptitleinput = function(){
 		var t = $(this).html();		
 		$(this).parents('.compdiv').find("input.comptitle").hide();
-		$(this).after('<div id="changetitle"><label>Title: </b><input class="text newtitle titlesaver" name="title[]" value="' + t + '" /></div>');
+		$(this).after('<div id="changetitle"><label>Title: </b><input class="text newtitle titlesaver" name="titletmp[]" value="' + t + '" /></div>');
 		$(this).next('#changetitle').find('input.titlesaver').focus();
 		$(this).parents('.compdiv').find("input.compslug").val('');
 		$(this).hide();		
@@ -559,7 +572,7 @@ jQuery(document).ready(function () {
 							$('div.wrapper .updated').remove();
 							$('div.wrapper .error').remove();
 							$(response).find('div.notify').parseNotify();
-						}
+							}
 					});
 					loadingAjaxIndicator.fadeOut(500);
 				});
@@ -637,9 +650,9 @@ jQuery(document).ready(function () {
 		loadingAjaxIndicator.show();
  
 		var message = $(this).attr("title");
-		var dlink   = $(this).attr("href");
-		var mytd    = $(this).parents("td");
-		var mytr    = $(this).parents("tr");
+		var dlink = $(this).attr("href");
+		var mytd = $(this).parents("td");
+		var mytr = $(this).parents("tr");
 
 		var old = mytd.html();
 		mytd.html('').addClass('ajaxwait_tint_dark').spin('gstable');
@@ -1201,13 +1214,14 @@ jQuery(document).ready(function () {
 		// $('#codetext').data('editor').hasChange == false;
 		
 		cm_save_editors();
-		var url = "path/to/your/script.php"; // the script where you handle the form input.
+		cm_save_htmleditors();
+		cm_save_inlinehtmleditors();
 		var dataString = $("#compEditForm").serialize();			
 
 		$.ajax({
 			type: "POST",
 			cache: false,
-			url: 'components.php',
+			// url: 'components.php',
 			data: dataString+'&submitted=1&ajaxsave=1',
 			success: function( response ) {
 				response = $.parseHTML(response);
@@ -1272,7 +1286,7 @@ jQuery(document).ready(function () {
 	};
 
 	// save all editors
-	cm_save_editors = function(theme){
+	cm_save_editors = function(){
 		// Debugger.log(theme);
 		$('.code_edit').each(function(i, textarea){
 			var editor = $(textarea).data('editor');
@@ -1280,6 +1294,35 @@ jQuery(document).ready(function () {
 			if(editor) {
 				editor.save();
 			}	
+		});		
+	};
+
+	// save all editors
+	cm_save_htmleditors = function(){
+		// Debugger.log(theme);
+		$('.html_edit').each(function(i, textarea){
+			var editor = $(textarea).data('htmleditor');
+			// Debugger.log(editor);
+			if(editor) {
+				Debugger.log('saving html editors');
+				editor.updateElement(); 
+			}
+		});		
+	};
+
+	// save all editors
+	cm_save_inlinehtmleditors = function(){
+		// Debugger.log(theme);
+		$('[contenteditable="true"]').each(function(i,elem){
+			Debugger.log($(elem).prop('id'));
+			var id = $(this).prop('id');
+			var editor = CKEDITOR.instances[id];
+			// CKEDITOR.instances.[blockID].getData()
+			Debugger.log(editor);
+			if(editor) {
+				Debugger.log('saving html editors');
+				Debugger.log(editor.getData());
+			}
 		});		
 	};
 
