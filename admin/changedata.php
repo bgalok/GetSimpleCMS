@@ -16,17 +16,19 @@ $load['plugin'] = true;
 include('inc/common.php');
 login_cookie_check();
 
-$autoSaveDraft = false; // auto save to autosave drafts
 $draft = (isset($_GET['nodraft']) || isset($_POST['post-nodraft']) || !getDef('GSUSEDRAFTS',true)) ? false : true; // (bool) using draft pages
 
 if(isset($_GET['publish']) && isset($_GET['id'])){
-	$id     = var_in($_GET['id']);
-	$status = publishDraft($id);
+	$id = var_in($_GET['id']);
+	
+	if(!filepath_is_safe(GSDATADRAFTSPATH.$id.'.xml',GSDATADRAFTSPATH)) $status = false;
+	else $status = publishDraft($id);
+
 	if($status){
 		exec_action('draft-publish'); // triggers page cache rebuild
 		generate_sitemap(); // regenerates sitemap
 	}
-	redirect("pages.php?id=". $id ."&upd=publish-".$status ? 'success' : 'error');
+	redirect("pages.php?id=". $id ."&upd=publish-". ($status ? 'success' : 'error'));
 	die();
 }
 
@@ -46,8 +48,8 @@ if (isset($_POST['submitted'])) {
 	$oldslug  = (isset($_POST['existing-url']) && trim($_POST['existing-url']) !=='') ? $_POST['existing-url'] : null;
 	$postslug = (isset($_POST['post-id']) && trim($_POST['post-id']) !=='') ? $_POST['post-id'] : null;
 
-	$slugHasChanged = !$pageIsNew && ($oldslug !== $postslug);
-	$overwrite = !$pageIsNew && !$slugHasChanged;
+	$slugHasChanged = !$pageIsNew && ($oldslug !== $postslug); # flag, this edit changed the slug
+	$overwrite      = !$pageIsNew && !$slugHasChanged;         # flag, overwrite an existing slug
 
 	// setup title
 	$title = safe_slash_html($_POST['post-title']);
@@ -57,9 +59,10 @@ if (isset($_POST['submitted'])) {
 	// if attemping to change slug on draft page throw ER_CANNOT_DRAFT
 	if ($slugHasChanged && $draft) redirect("edit.php?id=". urlencode($oldslug) ."&upd=draft-slug&type=edit");
 
-	// format and clean the responses
+	// format and clean the inputs
 	$data = array();
 
+	// main
 	if(isset($_POST['post-titlelong']))			{ $data['titlelong']   = safe_slash_html($_POST['post-titlelong']);	}
 	if(isset($_POST['post-summary']))			{ $data['summary']     = safe_slash_html($_POST['post-summary']);	}
 	if(isset($_POST['post-content'])) 			{ $data['content']     = safe_slash_html($_POST['post-content']); }
@@ -74,7 +77,6 @@ if (isset($_POST['submitted'])) {
 	// meta
 	if(isset($_POST['post-metak'])) 			{ $data['meta']        = $metak = safe_slash_html($_POST['post-metak']);	}
 	if(isset($_POST['post-metad'])) 			{ $data['metad']       = safe_slash_html($_POST['post-metad']);	}
-	
 	//robots
 	if(isset($_POST['post-metar-noindex']))	 	$data['metarNoIndex']   = 1;
 	else $data['metarNoIndex'] = 0; 
@@ -85,7 +87,7 @@ if (isset($_POST['submitted'])) {
 
 	// overwrite set for editing pages only, else we autoincrement slug if newpage or slughaschanged
 	$xml = createPageXml($title,$postslug,$data,$overwrite);
-	$url = (string)$xml->url; // legacy global
+	$url = (string)$xml->url; // legacy global for hooks
 
 	if(!$draft){
 		// if the slug changed update children
@@ -115,8 +117,15 @@ if (isset($_POST['submitted'])) {
 	 * @param  str $oldslug [description]
 	 */
 	function changedataAjaxSave($url,$oldslug){
-		global $draft;
+		global $draft,$pageIsNew;
 		if(isset($_POST['ajaxsave'])){
+			// force redirects
+			// 
+			// @todo we update the slug with the assigned slug, but there could be other things plugins need to do when adding a page,
+			//  that needs to be available to the page after, things like custom link menus, actions etc.
+			//  for now we redirect, so pagestack works since it is not implemented yet for ajax
+			if($pageIsNew) redirect('edit.php?id='.$url.'&nodraft&upd=edit-success&ptype=new',true);
+
 			// ajax response wrapper, still using html parsing for now
 			echo "<div>";
 
@@ -136,6 +145,7 @@ if (isset($_POST['submitted'])) {
 			// send new inputs for slug changes and new nonces
 			echo '<input id="nonce" name="nonce" type="hidden" value="'. get_nonce("edit", "edit.php") .'" />';
             echo '<input id="existing-url" name="existing-url" type="hidden" value="'. $url .'" />';
+            echo '<input id="post-id" name="post-id" type="hidden" value="'. $url .'" />';
 			echo "</div>";
 			die();
 		}

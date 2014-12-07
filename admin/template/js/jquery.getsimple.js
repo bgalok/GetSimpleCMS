@@ -1244,7 +1244,11 @@ jQuery(document).ready(function () {
 	updateEditSlug = function(html){
 		var newslug = $(html).find('#existing-url').val();
 		if(newslug) $('#existing-url').val(newslug);
-		// Debugger.log(newslug);
+		Debugger.log(newslug);
+
+		var newslug = $(html).find('#post-id').val();
+		if(newslug) $('#post-id').val(newslug);
+		Debugger.log(newslug);
 	};
 
 	function getExtension(file){
@@ -1465,10 +1469,17 @@ jQuery(document).ready(function () {
 
 	// catch all ajax error, and redirects for session timeout on HTTP 401 unauthorized
 	$( document ).ajaxError(function( event, xhr, settings ) {
-		// notifyInfo("ajaxComplete: " + xhr.status);
+		Debugger.log("ajaxComplete: " + xhr.status);
+		Debugger.log(event);
+		Debugger.log(xhr);
+		Debugger.log(settings);
 		if(xhr.status == 401){
 			notifyInfo("Redirecting...");
 			window.location.reload();
+		}
+		else if(xhr.status == 302){
+			Debugger.log("Redirecting...");
+			window.location = xhr.responseText;
 		}
 	});
 

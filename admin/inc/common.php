@@ -97,7 +97,10 @@ $GS_definitions = array(
 	'GSCHMODFILE'          => 0644,                           // (octal) chmod mode for files
 	'GSCHMODDIR'           => 0755,                           // (octal) chmod mode for dirs
 	'GSDOCHMOD'            => true,                           // (bool) perform chmod after creating files or directories
-	'GSUSEDRAFTS'          => true,                          // (bool) use page drafts
+	'GSUSEDRAFTS'          => true,                           // (bool) use page drafts
+	'GSUSEPAGESTACK'       => true,                           // (bool) use page stacks for drafts, else `nodraft` or `draft` only
+	'GSDRAFTSTACKDEFAULT'  => true,                           // (bool) default page stack editing to drafts if true
+	'GSSDRAFTSPUBLISHEDTAG'=> true,                           // (bool) show published label on non draft pages if true
 	'GSDEBUGINSTALL'       => false,                          // (bool) debug installs, prevent removal of installation files (install,setup,update)
 	'GSDEBUG'              => false,                          // (bool) debug mode
 	'GSDEBUGAPI'           => false,                          // (bool) debug api calls
@@ -127,7 +130,9 @@ global
  $plugins_info,   // (array) contains registered plugin info for active and inactive plugins
  $live_plugins,   // (array) contains plugin file ids and enable status
  $plugins,        // (array) global array for storing action hook callbacks
+ $pluginHooks,    // (array) global array for storing action hook callbacks hash table
  $filters,        // (array) global array for storing action filter callbacks
+ $pluginFilters,  // (array) global array for storing filter callbacks hash table
  $GS_scripts,     // (array) global array for storing queued asset scripts
  $GS_styles       // (array) global array for storing queued asset styles
 ;
@@ -439,11 +444,11 @@ if (notInInstall()) {
 
 }
 
-// fill for install
-if(empty($SITEURL))      $SITEURL  = suggest_site_path();
+// set these for install, empty if website.xml doesnt exist yet
+if(empty($SITEURL))      $SITEURL     = suggest_site_path();
 if(empty($SITEURL_ABS))  $SITEURL_ABS = $SITEURL;
 if(empty($SITEURL_REL))  $SITEURL_REL = $SITEURL;
-if(empty($ASSETURL))     $ASSETURL = $SITEURL;
+if(empty($ASSETURL))     $ASSETURL    = $SITEURL;
 
 /**
  * Include other files depending if they are needed or not
@@ -467,6 +472,7 @@ if(isset($load['plugin']) && $load['plugin']){
 		if ($en=='true' && file_exists(GSPLUGINPATH . $file)){
 			# debugLog('including plugin: ' . $file);
 			include_once(GSPLUGINPATH . $file);
+			exec_action('plugin-loaded'); // @hook plugin-loaded called after each plugin is included
 		}
 	}
 	exec_action('plugins-loaded'); // @hook plugins-loaded plugin files have been included

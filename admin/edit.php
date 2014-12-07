@@ -24,7 +24,23 @@ $id    = isset($_GET['id'])    ? var_in( $_GET['id']    ): null;
 $uri   = isset($_GET['uri'])   ? var_in( $_GET['uri']   ): null;
 $ptype = isset($_GET['type'])  ? var_in( $_GET['type']  ): null;
 $nonce = isset($_GET['nonce']) ? var_in( $_GET['nonce'] ): null;
-$draft = (isset($_GET['nodraft']) || !getDef('GSUSEDRAFTS',true)) ? false : true; // (bool) using draft pages
+
+$draft           = false; // init draft edit mode flag
+$draftsActive    = getDef('GSUSEDRAFTS',true); // are drafts active
+$pagestackactive = $draftsActive && getDef('GSUSEPAGESTACK',true) ;
+$pagestackdraft  = $pagestackactive && getDef('GSDRAFTSTACKDEFAULT',true);
+
+// if drafts are enabled
+if($draftsActive){
+    if(!isset($_GET['nodraft']) && $pagestackdraft){
+        // default to edit draft if `nodraft` not set, or GSEDITDRAFTDEFAULT is true
+        $draft = true;
+    }
+    else if(isset($_GET['draft']) && !$pagestackdraft){
+        // allow `draft` to force draft mode if GSEDITDRAFTDEFAULT is not true
+        $draft = true;
+    }
+}
 
 // Page variables reset
 $theme_templates = '';
@@ -148,7 +164,7 @@ include('template/include-nav.php');
 function getPublishedPageHead($editing = true, $path = ''){
     global $id,$draftExists,$pageExists;
     echo '<h3 class="floated">'. ($editing ? i18n_r('PAGE_EDIT_MODE') : i18n_r('CREATE_NEW_PAGE')).'</h3>';
-    if(getDef('GSUSEDRAFTS',true))echo '<div class="title label label-ok">'.i18n_r('LABEL_PUBLISHED').'</div>';
+    if(getDef('GSUSEDRAFTS',true) && $pageExists && getDef('GSSDRAFTSPUBLISHEDTAG',true)) echo '<div class="title label label-ok unselectable">'.i18n_r('LABEL_PUBLISHED').'</div>';
     echo '<!-- pill edit navigation -->',"\n",'<div class="edit-nav clearfix" >';
     if($editing) {
         echo '<a class="pageview" href="'. $path .'" target="_blank" accesskey="'. find_accesskey(i18n_r('VIEW')). '" >'. i18n_r('VIEW'). '</a>';
@@ -159,12 +175,12 @@ function getPublishedPageHead($editing = true, $path = ''){
 }
 
 function getDraftPageHead($editing = true, $path = ''){
-    global $id,$draftExists,$pageExists;
+    global $id,$draftExists,$pageExists,$PRETTYURLS;
     echo '<h3 class="floated">'. ($editing ? i18n_r('PAGE_EDIT_MODE') : i18n_r('CREATE_NEW_PAGE')) .'</h3>';
-    echo '<div class="title label label-draft secondary-lightest-back">'.i18n_r('LABEL_DRAFT').'</div>';
+    echo '<div class="title label label-draft secondary-lightest-back unselectable">'.i18n_r('LABEL_DRAFT').'</div>';
     echo '<!-- pill edit navigation -->',"\n",'<div class="edit-nav clearfix" >';
     if($editing) {
-        echo '<a class="draftview" href="'. $path .'?draft" target="_blank" accesskey="'. find_accesskey(i18n_r('VIEW')). '" >'. i18n_r('VIEW'). '</a>';
+        echo '<a class="draftview" href="'. $path . ($PRETTYURLS ? '?' : '&amp;') .'draft" target="_blank" accesskey="'. find_accesskey(i18n_r('VIEW')). '" >'. i18n_r('VIEW'). '</a>';
         echo '<a class="draftpublish" href="changedata.php?publish&id='.$id.'" accesskey="'. find_accesskey(i18n_r('PUBLISH')). '" >'. i18n_r('PUBLISH'). '</a>';
     }
     exec_action(get_filename_id().'-edit-nav'); 
@@ -183,8 +199,10 @@ if($newdraft) $pageClass.=' newdraft';
 <?php
     exec_action('page-stack'); // experimental
 
-    if(isset($id) && getDef('GSUSEDRAFTS',true)) {
-        // editing draft page, published page exists
+    if(isset($id) && $pagestackactive) {
+        /**
+         * Editing draft page, published page exists
+         */
         if($draft && $pageExists){
             $publishdata    = getPageXML($id,$nocdata = true);
             $publishAuthor  = (string)$publishdata->author;
@@ -193,80 +211,81 @@ if($newdraft) $pageClass.=' newdraft';
             if(empty($publishAuthor)) $publishAuthor = i18n_r('UNKNOWN');
 ?>
         <!-- PUBLISHED pagestack -->
-        <div class="pagestack existingpage boxsizingBorder">
+        <div class="pagestack existingpage shadow peek">
             <div style="float: left;">
                 <i class="fa fa-clock-o">&nbsp;</i><?php echo sprintf(i18n_r('LAST_SAVED'),$publishAuthor)," ",$publishPubdate;?>&nbsp;
             </div>
             <div style="float:right">
-                <a href="edit.php?id=<?php echo $id;?>&amp;nodraft" class="label label-ghost label-inline" style="color:#808080;">
+                <a href="edit.php?id=<?php echo $id;?>&amp;nodraft" class="label label-ghost label-inline">
                     <i class="fa fa-pencil"></i>
                 </a>
-                <div class="label label-ok label-inline"><?php i18n('LABEL_PUBLISHED'); ?></div>
+                <div class="label label-ok label-inline unselectable"><?php i18n('LABEL_PUBLISHED'); ?></div>
             </div>
             <div class="pagehead clear" >
             <?php
                 getPublishedPageHead(isset($id),$path);
             ?>
             </div>
-            <div class="shadow"></div>
         </div>
 <?php
         }
-        // editing published page, draft exists
+        /**
+         * Editing published page, draft exists
+         */
         if(!$draft && $draftExists){
-            $draftdata = getDraftXML($id,$nocdata = true);
-            $draftAuthor = (string)$draftdata->author;
+            $draftdata    = getDraftXML($id,$nocdata = true);
+            $draftAuthor  = (string)$draftdata->author;
             $draftPubdate = output_datetime($draftdata->pubDate);
             
             if(empty($draftAuthor)) $draftAuthor = i18n_r('UNKNOWN');
 ?>
         <!-- DRAFT page stack -->
-        <div class="pagestack existingdraft boxsizingBorder">
+        <div class="pagestack existingdraft shadow peek">
             <div style="float: left;">
                 <i class="fa fa-clock-o">&nbsp;</i><?php echo sprintf(i18n_r('DRAFT_LAST_SAVED'),$draftAuthor)," ",$draftPubdate;?>&nbsp;
             </div>
             <div style="float:right">
-                <a href="edit.php?id=<?php echo $id;?>" class="label label-ghost label-inline">
+                <a href="edit.php?id=<?php echo $id;?>&amp;draft" class="label label-ghost label-inline">
                     <i class="fa fa-pencil"></i>
                 </a>
-                <div class="label secondary-lightest-back label-inline"><?php i18n('LABEL_DRAFT'); ?></div>
+                <div class="label secondary-lightest-back label-inline unselectable"><?php i18n('LABEL_DRAFT'); ?></div>
             </div>
             <div class="pagehead clear" >
             <?php
                 getDraftPageHead(isset($id),$path);
             ?>
             </div>
-            <div class="shadow"></div>
         </div>
 <?php
         }
         else if(!$draft && !$draftExists){
-        // editing published page, draft does not exist
+        /**
+         * Editing published page, draft does not exist
+         */
 ?>
         <!-- NEWDRAFT page stack -->
-        <div class="pagestack newdraft boxsizingBorder">
+        <div class="pagestack newdraft shadow nopeek">
             <div style="float: left;">
                 <i class="fa fa-info-circle">&nbsp;</i><?php i18n('PAGE_NO_DRAFT'); ?>&nbsp;
             </div>
             <div style="float:right">
-                <a href="edit.php?id=<?php echo $id;?>&amp;" class="label label-ghost label-inline">
+                <a href="edit.php?id=<?php echo $id;?>&amp;draft" class="label label-ghost label-inline">
                     <i class="fa fa-pencil"></i>
                 </a>
-                <div class="label label-ghost label-inline"><?php i18n('LABEL_DRAFT'); ?></div>
+                <div class="label label-ghost label-inline unselectable"><?php i18n('LABEL_DRAFT'); ?></div>
             </div>
-            <div class="shadow"></div>
         </div>
 <?php
         }
     }
     echo '</div>';
     $draft ? getDraftPageHead(isset($id),$path) : getPublishedPageHead(isset($id),$path);
-    exec_action(get_filename_id().'-body'); 
+    exec_action(get_filename_id().'-body');
 ?>
         <form class="largeform" id="editform" action="changedata.php" method="post" accept-charset="utf-8" >
         <input id="nonce" name="nonce" type="hidden" value="<?php echo get_nonce("edit", "edit.php"); ?>" />
         <input id="author" name="post-author" type="hidden" value="<?php echo $USR; ?>" />
-        <?php if(getDef('GSUSEDRAFTS',true) && !$draft){ ?><input id="nodraft" name="post-nodraft" type="hidden" value="1" /><?php } ?>
+        <?php if($draftsActive && !$draft){ ?><input id="nodraft" name="post-nodraft" type="hidden" value="1" /><?php } ?>
  
         <!-- page title toggle screen -->
         <p id="edit_window">
@@ -410,9 +429,10 @@ if($newdraft) $pageClass.=' newdraft';
 
             <?php exec_action('edit-content'); //@hook edit-content after page edit content html output ?> 
 
-            <?php if(isset($data_edit)) { 
-                echo '<input id="existing-url" type="hidden" name="existing-url" value="'. $url .'" />'; 
-            }
+            <?php 
+                if(isset($data_edit)) { 
+                    echo '<input id="existing-url" type="hidden" name="existing-url" value="'. $url .'" />'; 
+                }
 
             exec_action('html-editor-init'); //@hook html-edit-init LEGACY deprecated
             echo "<!-- html-editor-init -->";
@@ -482,14 +502,14 @@ if($newdraft) $pageClass.=' newdraft';
             
             <?php if($url != '') { ?>
                 <p class="editfooter"><?php 
-                    if (isset($pubDate)) { 
+                    if (!$newdraft && isset($pubDate)) { 
                         echo '<span><i class="fa fa-clock-o"></i>';
-                        echo sprintf(($draft ? i18n_r('DRAFT_LAST_SAVED') : i18n_r('LAST_SAVED')), '<em>'.empty($author) ? i18n_r('UNKNOWN') : $author.'</em>').' '. output_datetime($pubDate).'</span>';
+                            echo sprintf(($draft ? i18n_r('DRAFT_LAST_SAVED') : i18n_r('LAST_SAVED')), '<em>'. (empty($author) ? i18n_r('UNKNOWN') : $author.'</em>')) .' ' . output_datetime($pubDate).'</span>';
                     }
                     if ( $draft && fileHasBackup(GSDATADRAFTSPATH.$url.'.xml') ) {
-                        echo '&bull;&nbsp;&nbsp; <a href="backup-edit.php?p=view&amp;draft&amp;id='.$url.'" target="_blank" >'.i18n_r('BACKUP_AVAILABLE').'</a>';
+                        echo '<span>&bull;</span><a href="backup-edit.php?p=view&amp;draft&amp;id='.$url.'" target="_blank" ><i class="fa fa-file-archive-o"></i>'.i18n_r('BACKUP_AVAILABLE').'</a></span>';
                     }
-                    else if(fileHasBackup(GSDATAPAGESPATH.$url.'.xml') ) {
+                    else if( !$draft && fileHasBackup(GSDATAPAGESPATH.$url.'.xml') ) {
                         echo '<span>&bull;</span><span><a href="backup-edit.php?p=view&amp;id='.$url.'" target="_blank" ><i class="fa fa-file-archive-o"></i>'.i18n_r('BACKUP_AVAILABLE').'</a></span>';
                     }
                 ?></p>
